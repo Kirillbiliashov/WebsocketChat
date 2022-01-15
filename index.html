@@ -1,11 +1,16 @@
 <!DOCTYPE html>
 <html>
+
 <body>
 <h1>Chat</h1>
 <div id="chat"></div>
-<input id="msg" type="text">
+<input id="msg" type="text" style="display: none;" placeholder="Type your message">
+<input id="createRoom" type="text" placeholder="create new room">
+<input id="enterRoom" type="text" placeholder="enter room name">
 <style>
-input { border: 1px solid green; }
+  input {
+    border: 1px solid green;
+  }
 </style>
 <script>
 
@@ -14,12 +19,28 @@ input { border: 1px solid green; }
   const socket = new WebSocket('ws://127.0.0.1:8000/chat');
   const chat = document.getElementById('chat');
   const msg = document.getElementById('msg');
+  const createRoom = document.getElementById('createRoom');
+  const enterRoom = document.getElementById('enterRoom');
   msg.focus();
 
   const writeLine = (text) => {
     const line = document.createElement('div');
     line.innerHTML = `<p>${text}</p>`;
     chat.appendChild(line);
+  };
+
+  const showRoomForm = () => {
+    createRoom.style = "display: block;";
+    createRoom.value = '';
+    enterRoom.style = "display: block;";
+    enterRoom.value = '';
+    msg.style = "display: none";
+  };
+
+  const showMessageForm = () => {
+    createRoom.style = "display: none;";
+    enterRoom.style = "display: none;";
+    msg.style = "display: block";
   };
 
   socket.addEventListener('open', () => {
@@ -31,7 +52,13 @@ input { border: 1px solid green; }
   });
 
   socket.addEventListener('message', ({ data }) => {
-    writeLine(data);
+    const parsed = JSON.parse(data);
+    if (parsed.error) {
+      showRoomForm();
+      writeLine(parsed.error);
+    } else {
+      writeLine(parsed.message);
+    }
   });
 
   msg.addEventListener('keydown', (event) => {
@@ -39,10 +66,29 @@ input { border: 1px solid green; }
       const s = msg.value;
       msg.value = '';
       writeLine(s);
-      socket.send(s);
+      const message = JSON.stringify({ data: s, type: 'message' });
+      socket.send(message);
+    }
+  });
+
+  createRoom.addEventListener('keydown', (event) => {
+    if (event.keyCode === CHAR_RETURN) {
+      const roomName = createRoom.value;
+      const message = JSON.stringify({ data: roomName, type: 'create' });
+      socket.send(message);
+    }
+  });
+
+  enterRoom.addEventListener('keydown', (event) => {
+    if (event.keyCode === CHAR_RETURN) {
+      const roomName = enterRoom.value;
+      showMessageForm();
+      const message = JSON.stringify({ data: roomName, type: 'enter' });
+      socket.send(message);
     }
   });
 
 </script>
 </body>
+
 </html>
